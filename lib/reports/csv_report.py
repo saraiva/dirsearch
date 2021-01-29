@@ -22,13 +22,9 @@ from lib.reports import *
 
 
 class CSVReport(FileBaseReport):
-
     def addPath(self, path, status, response):
-        contentLength = None
-
         try:
             contentLength = int(response.headers["content-length"])
-
         except (KeyError, ValueError):
             contentLength = len(response.body)
 
@@ -36,6 +32,7 @@ class CSVReport(FileBaseReport):
 
     def generate(self):
         result = "Time,URL,Status,Size,Redirection\n"
+        insecureChars = ("+", "-", "=", "@")
 
         for path, status, contentLength, redirect in self.pathList:
             result += "{0},".format(time.ctime())
@@ -43,7 +40,12 @@ class CSVReport(FileBaseReport):
             result += "{0},".format(status)
             result += "{0},".format(contentLength)
             if redirect:
-                result += "{0}".format(redirect)
+                # Preventing CSV injection. More info: https://www.exploit-db.com/exploits/49370
+                if redirect.startswith(insecureChars):
+                    redirect = "'" + redirect
+
+                redirect = redirect.replace("\"", "\"\"")
+                result += "\"{0}\"".format(redirect)
 
             result += "\n"
 
